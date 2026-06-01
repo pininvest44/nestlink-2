@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk STK Push — NestLink</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00d4aa;
+            font-size: 2rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #8892b0;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #ccd6f6;
+            font-weight: 500;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.2);
+            color: #e0e0e0;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #00d4aa;
+            box-shadow: 0 0 0 3px rgba(0,212,170,0.1);
+        }
+        textarea {
+            min-height: 180px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+        .hint {
+            font-size: 0.8rem;
+            color: #8892b0;
+            margin-top: 6px;
+        }
+        .hint code {
+            background: rgba(0,212,170,0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #00d4aa;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4aa, #00a884);
+            color: #0a192f;
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,212,170,0.3);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat {
+            background: rgba(0,0,0,0.2);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #00d4aa;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #8892b0;
+            margin-top: 4px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 16px 0;
+            display: none;
+        }
+        .progress-bar.active { display: block; }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4aa, #00a884);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 12px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85rem;
+        }
+        .log-entry {
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .log-success { background: rgba(0,212,170,0.1); color: #00d4aa; }
+        .log-error { background: rgba(255,71,87,0.1); color: #ff4757; }
+        .log-pending { background: rgba(255,193,7,0.1); color: #ffc107; }
+        .log-info { background: rgba(100,149,237,0.1); color: #6495ed; }
+        .badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-success { background: #00d4aa; color: #0a192f; }
+        .badge-error { background: #ff4757; color: white; }
+        .badge-pending { background: #ffc107; color: #0a192f; }
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(10,25,47,0.3);
+            border-top-color: #0a192f;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,212,170,0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,170,0.5); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Bulk STK Push</h1>
+        <p class="subtitle">Send M-Pesa STK Push requests to multiple numbers via NestLink</p>
+
+        <div class="stats" id="stats">
+            <div class="stat">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Total Numbers</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-success">0</div>
+                <div class="stat-label">Successful</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="stat-failed">0</div>
+                <div class="stat-label">Failed</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 16px; color: #00d4aa;">⚙️ Configuration</h3>
+            <div class="row">
+                <div class="form-group">
+                    <label for="apiKey">API Secret Key</label>
+                    <input type="password" id="apiKey" placeholder="132e56c0d5a2e803e545f835">
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount (KES)</label>
+                    <input type="number" id="amount" value="100" min="1">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="description">Transaction Description</label>
+                <input type="text" id="description" value="Payment for Order" placeholder="e.g. Payment for Order #12345">
+            </div>
+            <div class="form-group">
+                <label for="delay">Delay Between Requests (ms)</label>
+                <input type="number" id="delay" value="2000" min="500" step="100">
+                <p class="hint">Recommended: 2000ms to avoid rate limiting</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 16px; color: #00d4aa;">📋 Phone Numbers</h3>
+            <div class="form-group">
+                <label for="numbers">Enter Phone Numbers (one per line or comma-separated)</label>
+                <textarea id="numbers" placeholder="254712345678&#10;254723456789&#10;254734567890"></textarea>
+                <p class="hint">Format: <code>2547XXXXXXXX</code> or <code>07XXXXXXXX</code> (will be auto-formatted)</p>
+            </div>
+            <button class="btn btn-primary" id="startBtn" onclick="startBulkPush()">
+                <span>🚀 Start Bulk Push</span>
+            </button>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="card hidden" id="resultsCard">
+            <h3 style="margin-bottom: 16px; color: #00d4aa;">📊 Results Log</h3>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let isRunning = false;
+        let results = [];
+
+        document.getElementById('numbers').addEventListener('input', function() {
+            updateStats();
+        });
+
+        function formatPhone(phone) {
+            phone = phone.replace(/\s/g, '').replace(/,/g, '');
+            if (phone.startsWith('0') && phone.length === 10) {
+                phone = '254' + phone.substring(1);
+            }
+            return phone;
+        }
+
+        function parseNumbers() {
+            const raw = document.getElementById('numbers').value;
+            return raw.split(/[
+,]+/)
+                .map(n => formatPhone(n.trim()))
+                .filter(n => /^2547\d{8}$/.test(n));
+        }
+
+        function updateStats() {
+            const numbers = parseNumbers();
+            document.getElementById('stat-total').textContent = numbers.length;
+        }
+
+        function log(message, type = 'info', detail = '') {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+
+            const badgeClass = type === 'success' ? 'badge-success' : 
+                              type === 'error' ? 'badge-error' : 'badge-pending';
+            const badgeText = type === 'success' ? 'OK' : 
+                             type === 'error' ? 'FAIL' : 'INFO';
+
+            entry.innerHTML = `
+                <span class="badge ${badgeClass}">${badgeText}</span>
+                <span>${message}</span>
+                ${detail ? `<span style="color: #8892b0; margin-left: auto;">${detail}</span>` : ''}
+            `;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function sendPush(phone, apiKey, amount, description, index, total) {
+            const localId = `BULK_${Date.now()}_${index}`;
+
+            try {
+                log(`[${index + 1}/${total}] Sending to ${phone}...`, 'pending');
+
+                const response = await fetch('https://api.nestlink.co.ke/runPrompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Api-Secret': apiKey
+                    },
+                    body: JSON.stringify({
+                        phone: phone,
+                        amount: parseInt(amount),
+                        local_id: localId,
+                        transaction_desc: description
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`[${index + 1}/${total}] ${phone}`, 'success', 'Sent');
+                    return { phone, status: 'success', response: data };
+                } else {
+                    throw new Error(data.message || `HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log(`[${index + 1}/${total}] ${phone}`, 'error', error.message);
+                return { phone, status: 'error', error: error.message };
+            }
+        }
+
+        async function startBulkPush() {
+            if (isRunning) return;
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const amount = document.getElementById('amount').value;
+            const description = document.getElementById('description').value.trim();
+            const delay = parseInt(document.getElementById('delay').value);
+            const numbers = parseNumbers();
+
+            if (!apiKey) {
+                alert('Please enter your API Secret Key');
+                return;
+            }
+            if (numbers.length === 0) {
+                alert('Please enter at least one valid phone number');
+                return;
+            }
+            if (!confirm(`Send STK Push to ${numbers.length} number(s) for KES ${amount} each?`)) {
+                return;
+            }
+
+            isRunning = true;
+            results = [];
+            document.getElementById('resultsCard').classList.remove('hidden');
+            document.getElementById('logContainer').innerHTML = '';
+            document.getElementById('progressBar').classList.add('active');
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('startBtn').innerHTML = '<div class="spinner"></div> Running...';
+
+            document.getElementById('stat-success').textContent = '0';
+            document.getElementById('stat-failed').textContent = '0';
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < numbers.length; i++) {
+                const progress = ((i + 1) / numbers.length) * 100;
+                document.getElementById('progressFill').style.width = progress + '%';
+
+                const result = await sendPush(numbers[i], apiKey, amount, description, i, numbers.length);
+                results.push(result);
+
+                if (result.status === 'success') {
+                    successCount++;
+                    document.getElementById('stat-success').textContent = successCount;
+                } else {
+                    failCount++;
+                    document.getElementById('stat-failed').textContent = failCount;
+                }
+
+                if (i < numbers.length - 1) {
+                    await sleep(delay);
+                }
+            }
+
+            document.getElementById('progressFill').style.width = '100%';
+            log(`✅ Completed! ${successCount} successful, ${failCount} failed out of ${numbers.length}`, 'info');
+
+            isRunning = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('startBtn').innerHTML = '<span>🚀 Start Bulk Push</span>';
+
+            downloadResults();
+        }
+
+        function downloadResults() {
+            const csv = [
+                ['Phone', 'Status', 'Details'],
+                ...results.map(r => [
+                    r.phone,
+                    r.status,
+                    r.error || JSON.stringify(r.response).substring(0, 100)
+                ])
+            ].map(row => row.join(',')).join('
+');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `stk-push-results-${new Date().toISOString().slice(0,19)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
